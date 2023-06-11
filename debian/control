@@ -1,0 +1,48 @@
+Source: safepasswords
+Priority: extra
+Maintainer: Alexis Wilke <alexis@m2osw.com>
+Build-Depends: cmake,
+    debhelper,
+    doxygen,
+    graphviz,
+    libexcept-dev (>= 1.1.12.0~bionic),
+    libssl-dev (>= 1.0.1),
+    libutf8-dev (>= 1.0.6.0~bionic),
+    snapcatch2 (>= 2.9.1.0~bionic),
+    snapcmakemodules (>= 1.0.49.0~bionic),
+    snapdev (>= 1.1.3.0~bionic),
+    snaplogger-dev (>= 1.0.0.0~bionic)
+Standards-Version: 3.9.4
+Section: utils
+Homepage: https://snapwebsites.org/
+Vcs-Git: https://github.com/m2osw/snapcpp.git
+Vcs-Browser: https://github.com/m2osw/safepasswords
+
+Package: safepasswords-doc
+Section: doc
+Architecture: all
+Depends: ${misc:Depends}
+Description: Documentation for the Safe Passwords library.
+ This package includes documentation for the Safe Passwords project.
+
+Package: safepasswords
+Section: utils
+Architecture: any
+Suggests: safepasswords-doc
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Library used to handle passwords in memory.
+ This library provides a safer string used to store passwords in memory.
+ All the std::string capabilities are not available on purpose. In most
+ cases, you only want to access the encrypted (hashed, really) string
+ in places other than RAM.
+
+Package: safepasswords-dev
+Section: libdevel
+Architecture: any
+Depends: safepasswords (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Description: Development package for the Safe Passwords project library.
+ This package allows you to make it safer to use passwords in memory by
+ saving those in mlock()-ed memory that gets cleared once the string is
+ not necessary anymore.
+
+# vim: ts=4 sw=4 et
