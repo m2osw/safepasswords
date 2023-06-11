@@ -39,6 +39,14 @@ buffers (i.e. allocate 16Kb and then allocate the string buffers within
 that 16Kb of RAM instead of allocating 4K per string).
 
 
+# Tools
+
+## Generate Password
+
+The `generate-password` tool can be used to see the list of available
+digests or generate passwords from your command line.
+
+
 # License
 
 The source is covered by the GPL 3 license.
