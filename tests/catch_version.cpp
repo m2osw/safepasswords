@@ -30,7 +30,7 @@
 
 CATCH_TEST_CASE("version", "[version]")
 {
-    CATCH_START_SECTION("verify runtime vs compile time version numbers")
+    CATCH_START_SECTION("version: verify runtime vs compile time version numbers")
     {
         CATCH_REQUIRE(safepasswords::get_major_version()   == SAFEPASSWORDS_VERSION_MAJOR);
         CATCH_REQUIRE(safepasswords::get_release_version() == SAFEPASSWORDS_VERSION_MINOR);
