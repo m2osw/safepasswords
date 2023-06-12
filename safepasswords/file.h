@@ -47,6 +47,7 @@ public:
 
 private:
     bool                    load_passwords();
+    std::string::size_type  find_pos(std::string const & name);
 
     bool                    f_file_loaded = false;
     std::string::size_type  f_next = 0;

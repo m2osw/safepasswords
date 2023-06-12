@@ -27,94 +27,17 @@
 
 // snapdev
 //
-#include <snapdev/hexadecimal_string.h>
-//#include <snapdev/not_used.h>
-
-
-// C++
-//
-//#include <memory>
-//#include <iostream>
-
-
-// C
-//
-//#include <fcntl.h>
-//#include <termios.h>
+#include    <snapdev/hexadecimal_string.h>
 
 
 // last include
 //
-#include <snapdev/poison.h>
+#include    <snapdev/poison.h>
 
 
 
 namespace safepasswords
 {
-
-
-
-namespace
-{
-
-
-
-/** \brief Delete an MD context.
- *
- * We allocate an EVP MD context in order to compute the hash according to
- * the digest specified by the programmer (or "sha512" by default.)
- *
- * The function using the \p mdctx may raise an exception on an error so
- * we save the context in a shared pointer which auto-deletes the context
- * once we are done with it by calling this very function.
- *
- * \note
- * The mdctx buffer is NOT allocated. It's created on the stack, but it
- * still needs cleanup and the digest may allocate buffers that need to
- * be released.
- *
- * \param[in] mdctx  The pointer to the MD context.
- */
-//void evp_md_ctx_deleter(EVP_MD_CTX * mdctx)
-//{
-//    // clean up the context
-//    // (note: the return value is not documented so we ignore it)
-//#if __cplusplus >= 201700
-//    EVP_MD_CTX_free(mdctx);
-//#else
-//    EVP_MD_CTX_cleanup(mdctx);
-//    delete mdctx;
-//#endif
-//}
-
-
-//EVP_MD_CTX * evp_md_ctx_allocate()
-//{
-//    EVP_MD_CTX * mdctx(nullptr);
-//#if __cplusplus >= 201700
-//    mdctx = EVP_MD_CTX_new();
-//#else
-//    mdctx = new EVP_MD_CTX;
-//    EVP_MD_CTX_init(mdctx);
-//#endif
-//    return mdctx;
-//}
-
-
-/** \brief Close a file descriptor.
- *
- * This function will close the file descriptor pointer by fd.
- *
- * \param[in] fd  Pointer to the file descriptor to close.
- */
-//void close_file(int * fd)
-//{
-//    close(*fd);
-//}
-
-
-}
-
 
 
 
@@ -140,7 +63,7 @@ namespace
  * an application which sits around for a long time and other applications
  * may modify the password file, you want to use this class only
  * temporarilly (i.e. use it on your stack, make the necessary find/save
- * calls, then lose it.)
+ * calls, then lose it).
  *
  * \param[in] filename  The path and name of the password file.
  */
@@ -169,7 +92,7 @@ file::~file()
  * If the \p name parameter is an empty string, then this exception is raised.
  *
  * \param[in] name  The name of the user to search.
- * \param[out] password  The password if found.
+ * \param[out] p  The password if found.
  *
  * \return true if the password was found in the file.
  */
@@ -177,33 +100,15 @@ bool file::find(std::string const & name, password & p)
 {
     p.clear();
 
-    if(name.empty())
-    {
-        throw invalid_parameter("the password_file::find() function cannot be called with an empty string in 'name'.");
-    }
-
-    // read the whole file at once
-    //
-    if(!load_passwords())
-    {
-        return false;
-    }
-
     // search the user
     //
-    std::string const & passwords(f_passwords.contents());
-    std::string::size_type const user_pos(passwords.find(name + ":"));
-
-    // did we find it?
-    //
-    // Note: if npos, obviously we did not find it at all
-    //       if not npos, the character before must be a '\n', unless pos == 0
-    //
-    if(user_pos == std::string::npos
-    || (user_pos != 0 && passwords[user_pos - 1] != '\n'))
+    std::string::size_type const user_pos(find_pos(name));
+    if(user_pos == std::string::npos)
     {
         return false;
     }
+
+    std::string const & passwords(f_passwords.contents());
 
     // get the end of the line
     //
@@ -289,6 +194,10 @@ bool file::find(std::string const & name, password & p)
  * time you call the next() function, you will get the first user
  * again.
  *
+ * \todo
+ * The bin_to_hex() function should not be used here to avoid leaks of
+ * the data.
+ *
  * \param[in] name  The name of the user.
  * \param[in] p  The password to save in this file.
  *
@@ -296,48 +205,38 @@ bool file::find(std::string const & name, password & p)
  */
 bool file::save(std::string const & name, password const & p)
 {
-    if(name.empty())
-    {
-        throw invalid_parameter("the password_file::save() function cannot be called with an empty string in 'name'");
-    }
-
-    // read the while file at once
-    //
-    if(!load_passwords())
-    {
-        // ... we are about to create the file if it does not exist yet ...
-    }
-
     string const & salt(p.get_salt());
     string const & encrypted(p.get_encrypted());
-    std::string const new_line(
-              name
-            + ":"
-            + p.get_digest()
-            + ":"
-            + snapdev::bin_to_hex(std::string(salt.data(), salt.length()))
-            + ":"
-            + snapdev::bin_to_hex(std::string(encrypted.data(), encrypted.length()))
-            + "\n");
+
+    string new_line(name.c_str(), name.length());
+    new_line += ':';
+    new_line += p.get_digest().c_str();
+    new_line += ':';
+    new_line += snapdev::bin_to_hex(std::string(salt.data(), salt.length())).c_str();
+    new_line += ':';
+    new_line += snapdev::bin_to_hex(std::string(encrypted.data(), encrypted.length())).c_str();
+    new_line += '\n';
 
     // search the user
     //
-    std::string const & passwords(f_passwords.contents());
-    std::string::size_type const user_pos(passwords.find(name + ":"));
+    std::string::size_type const user_pos(find_pos(name));
 
-    std::string new_content;
+    std::string const & passwords(f_passwords.contents());
+    //std::string::size_type const user_pos(passwords.find(name + ":"));
+
+    string new_content;
 
     // did we find it?
     //
     // Note: if npos, obviously we did not find it at all
     //       if not npos, the character before must be a '\n', unless pos == 0
     //
-    if(user_pos == std::string::npos
-    || (user_pos != 0 && passwords[user_pos - 1] != '\n'))
+    if(user_pos == std::string::npos)
     {
         // not found, append at the end
         //
-        new_content = passwords + new_line;
+        new_content = string(passwords.c_str(), passwords.length());
+        new_content += new_line;
     }
     else
     {
@@ -347,25 +246,27 @@ bool file::save(std::string const & name, password const & p)
         //
         //    . what comes before 'user_pos'
         //    . the line defining that user password
-        //    . what comas after the 'user_pos'
+        //    . what comes after the 'user_pos'
         //
         std::string::size_type const digest_position(user_pos + name.length() + 1);
-        std::string::size_type const end(passwords.find("\n", digest_position));
+        std::string::size_type end(passwords.find("\n", digest_position));
         if(end == std::string::npos)
         {
-            return false;
+            // no '\n', assume this was the last line
+            //
+            end = passwords.length();
+        }
+        else
+        {
+            // skip the '\n'
+            //
+            ++end;
         }
 
         char const * s(passwords.c_str());
-        std::string before(s, user_pos);
-        std::string after(s + end + 1, passwords.length() - end - 1);
-        // XXX: in regard to security, the + operator creates temporary buffers
-        //      (i.e. we would need to allocate our own buffer and copy there.)
-        new_content = before
-                    + new_line
-                    + after;
-        clear_string(before);
-        clear_string(after);
+        new_content = string(s, user_pos);
+        new_content += new_line;
+        new_content += string(s + end, passwords.length() - end);
     }
 
     // we are about to change the file so the f_next pointer is not unlikely
@@ -375,9 +276,7 @@ bool file::save(std::string const & name, password const & p)
 
     // save the new content in the file_content object
     //
-    f_passwords.contents(new_content);
-
-    clear_string(new_content);
+    f_passwords.contents(new_content.to_std_string());
 
     // write the new file to disk
     //
@@ -401,38 +300,25 @@ bool file::save(std::string const & name, password const & p)
  * again.
  *
  * \param[in] name  The name of the user.
+ *
+ * \return true if the user was deleted or not found, false on error
  */
 bool file::remove(std::string const & name)
 {
-    if(name.empty())
-    {
-        throw invalid_parameter("the password_file::delete_user() function cannot be called with an empty string in 'name'");
-    }
-
-    // read the while file at once
-    //
-    if(!load_passwords())
-    {
-        return false;
-    }
-
     // search the user
     //
-    std::string const & passwords(f_passwords.contents());
-    std::string::size_type const user_pos(passwords.find(name + ":"));
+    std::string::size_type const user_pos(find_pos(name));
 
-    // did we find it?
+    // did we find it? if not it is already removed
     //
-    // Note: if npos, obviously we did not find it at all
-    //       if not npos, the character before must be a '\n', unless pos == 0
-    //
-    if(user_pos == std::string::npos
-    || (user_pos != 0 && passwords[user_pos - 1] != '\n'))
+    if(user_pos == std::string::npos)
     {
         // not found, done
         //
         return true;
     }
+
+    std::string const & passwords(f_passwords.contents());
 
     // get the end of the line
     //
@@ -443,20 +329,19 @@ bool file::remove(std::string const & name)
     //    . what comas after the 'user_pos'
     //
     std::string::size_type const digest_position(user_pos + name.length() + 1);
-    std::string::size_type const end(passwords.find("\n", digest_position));
+    std::string::size_type end(passwords.find("\n", digest_position));
     if(end == std::string::npos)
     {
-        return false;
+        end = passwords.length();
+    }
+    else
+    {
+        ++end;
     }
 
     char const * s(passwords.c_str());
-    std::string before(s, user_pos);
-    std::string after(s + end + 1, passwords.length() - end - 1);
-    // XXX: in regard to security, the + operator creates temporary buffers
-    //      (i.e. we would need to allocate our own buffer and copy there.)
-    std::string new_content(before + after);
-    clear_string(before);
-    clear_string(after);
+    string new_content(s, user_pos);
+    new_content += string(s + end, passwords.length() - end);
 
     // we are about to change the file so the f_next pointer is not unlikely
     // to be invalidated, so we rewind it
@@ -465,9 +350,7 @@ bool file::remove(std::string const & name)
 
     // save the new content in the file_content object
     //
-    f_passwords.contents(new_content);
-
-    clear_string(new_content);
+    f_passwords.contents(new_content.to_std_string());
 
     // write the new file to disk
     //
@@ -481,22 +364,26 @@ bool file::remove(std::string const & name)
 
 /** \brief Read the next entry.
  *
- * This function can be used to read all the usernames one by one.
+ * This function can be used to read all the usernames and their password
+ * data one by one.
  *
  * The function returns the name of the user, which cannot be defined in
  * the password object. Once the end of the file is reached, the function
- * returns an empty string and does not modify \p password.
+ * returns an empty string and in which case \p password is cleared.
  *
  * \note
- * The function may hit invalid input data, in which case it will return
- * an empty string as if the end of the file was reached.
+ * The function may hit invalid input data, in which case it returns
+ * an empty string as if the end of the file was reached. No more data
+ * will be returned after that.
  *
- * \param[in,out] p  The password object where data gets saved.
+ * \param[out] p  The password object where data gets saved.
  *
  * \return The username or an empty string once the end of the file is reached.
  */
 std::string file::next(password & p)
 {
+    p.clear();
+
     if(!load_passwords())
     {
         return std::string();
@@ -505,7 +392,7 @@ std::string file::next(password & p)
     // get the end of the line
     //
     std::string const & passwords(f_passwords.contents());
-    std::string::size_type const next_user_pos(passwords.find("\n", f_next));
+    std::string::size_type const next_user_pos(passwords.find('\n', f_next));
     if(next_user_pos == std::string::npos)
     {
         return std::string();
@@ -513,14 +400,19 @@ std::string file::next(password & p)
 
     // retrieve the position of the end of the user name
     //
-    std::string::size_type const end_name_pos(passwords.find(":", f_next, next_user_pos - f_next));
-    if(end_name_pos == std::string::npos)
+    auto const it(std::find(passwords.cbegin() + f_next, passwords.cbegin() + next_user_pos, ':'));
+    if(it == passwords.cbegin() + next_user_pos)
     {
+        // name is always followed by a ':'
+        //
         return std::string();
     }
+    std::string::size_type const end_name_pos(it - passwords.cbegin());
 
     if(f_next == end_name_pos)
     {
+        // empty names are not valid
+        //
         return std::string();
     }
 
@@ -529,8 +421,15 @@ std::string file::next(password & p)
     // user again... we could have a sub-function to avoid the double
     // search!)
     //
-    std::string const username(passwords.c_str(), end_name_pos - f_next);
-    find(username, p);
+    std::string const username(passwords.c_str() + f_next, end_name_pos - f_next);
+
+    if(!find(username, p))
+    {
+        // somehow find() could not find the username, that generally means
+        // that line is invalid
+        //
+        return std::string();
+    }
 
     // the next user will be found on the next line
     //
@@ -555,6 +454,14 @@ void file::rewind()
  *
  * This function loads the password file. It makes sure to not re-load
  * it if it was already loaded.
+ *
+ * \todo
+ * Replace the snapdev::file_contents with a local implementation which
+ * (1) makes sure not to use extraneous caches and (2) uses the
+ * safepasswords::string object so it gets auto-cleared once we're done
+ * with it.
+ *
+ * \return true if the file was properly loaded.
  */
 bool file::load_passwords()
 {
@@ -568,6 +475,56 @@ bool file::load_passwords()
     }
 
     return true;
+}
+
+
+/** \brief Search for a user.
+ *
+ * This function makes sure that \p name is not empty. Then it loads the
+ * file if it wasn't loaded yet. Finally, it searches for the user named
+ * \p name. If the user is found, return the position in the file contents
+ * (`f_passwords`).
+ *
+ * The function returns std::string::npos if the user is not found.
+ *
+ * \param[in] name  The name of the user to search.
+ *
+ * \return The position where the user is defined or std::string::npos.
+ */
+std::string::size_type file::find_pos(std::string const & name)
+{
+    if(name.empty())
+    {
+        throw invalid_parameter("the file::find()/file::save()/file::remove() functions cannot be called with an empty string in 'name'.");
+    }
+
+    // read the whole file at once
+    //
+    if(!load_passwords())
+    {
+        return false;
+    }
+
+    std::string const & passwords(f_passwords.contents());
+    std::string::size_type user_pos(0);
+    if(passwords.compare(0, name.length(), name) != 0
+    || passwords.length() <= name.length()
+    || passwords[name.length()] != ':')
+    {
+        user_pos = passwords.find('\n' + name + ':');
+
+        // did we find it?
+        //
+        // Note: if npos, obviously we did not find it at all
+        //       if not npos, the character before must be a '\n', unless pos == 0
+        //
+        if(user_pos != std::string::npos)
+        {
+            ++user_pos;
+        }
+    }
+
+    return user_pos;
 }
 
 

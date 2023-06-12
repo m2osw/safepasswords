@@ -39,7 +39,10 @@ class string
 {
 public:
                             string(char const * s = nullptr, std::size_t l = static_cast<std::size_t>(-1));
+                            string(string const & rhs);
                             ~string();
+
+    string &                operator = (string const & rhs);
 
     std::size_t             length() const;
     bool                    empty() const;
@@ -60,6 +63,8 @@ public:
     string                  operator + (char32_t wc) const;
 
     std::strong_ordering    operator <=> (string const & rhs) const;
+    bool                    operator == (string const & rhs) const;
+    bool                    operator != (string const & rhs) const;
 
 private:
     std::shared_ptr<detail::buffer>

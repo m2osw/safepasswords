@@ -149,10 +149,12 @@ EVP_MD_CTX * evp_md_ctx_allocate()
  *
  * \param[in] fd  Pointer to the file descriptor to close.
  */
+// LCOV_EXCL_START
 void close_file(int * fd)
 {
     close(*fd);
 }
+// LCOV_EXCL_STOP
 
 
 }
@@ -238,10 +240,12 @@ password::~password()
  *
  * This function can be used to explicitly clear all the password related
  * strings.
+ *
+ * \note
+ * The digest is not cleared or reset to the default.
  */
 void password::clear()
 {
-    f_digest.clear();
     f_plain.clear();
     f_salt.clear();
     f_encrypted.clear();
@@ -278,9 +282,13 @@ void password::set_digest(std::string const & digest)
 
     // Make sure the digest actually exists
     //
-    if(EVP_get_digestbyname(f_digest.c_str()) == nullptr)
+    EVP_MD const * md(EVP_get_digestbyname(digest.c_str()));
+    if(md == nullptr)
     {
-        throw digest_not_available("the specified digest could not be found");
+        throw digest_not_available(
+              "the specified digest ("
+            + digest
+            + ") was not found.");
     }
 
     f_digest = digest;
@@ -369,9 +377,11 @@ void password::generate(int min_length, int max_length)
     if(min_length > max_length)
     {
         throw invalid_parameter(
-              "adjusted minimum and maximum lengths are improperly sorted"
-            + std::to_string(SALT_SIZE)
-            + " bytes");
+              "adjusted minimum and maximum lengths are improperly sorted; minimum "
+            + std::to_string(min_length)
+            + " is larger than maximum "
+            + std::to_string(max_length)
+            + '.');
     }
 
     // a "large" set of random bytes
@@ -385,6 +395,7 @@ void password::generate(int min_length, int max_length)
         int const r(RAND_bytes(buf, sizeof(buf)));
         if(r != 1)
         {
+            // LCOV_EXCL_START
             // something happened, RAND_bytes() failed!
             char err[256];
             ERR_error_string_n(ERR_peek_last_error(), err, sizeof(err));
@@ -395,6 +406,7 @@ void password::generate(int min_length, int max_length)
                 + ": "
                 + err
                 + ")");
+            // LCOV_EXCL_STOP
         }
 
         for(std::size_t i(0); i < PASSWORD_SIZE; ++i)
@@ -450,7 +462,7 @@ void password::set_plain(string const & plain, string const & salt)
         throw invalid_parameter(
               "if defined, the salt must be exactly "
             + std::to_string(SALT_SIZE)
-            + " bytes");
+            + " bytes.");
     }
 
     f_plain = plain;
@@ -482,10 +494,14 @@ void password::set_plain(string const & plain, string const & salt)
  * \todo
  * Add a minimum size for the password.
  *
+ * \todo
+ * Make it testable in a unit test.
+ *
  * \param[in] salt  The salt to encrypt the password.
  *
  * \return true if the password was properly entered, false otherwise.
  */
+// LCOV_EXCL_START
 bool password::get_from_console(string const & salt)
 {
     // read the new f_plain_password from the console
@@ -621,6 +637,7 @@ bool password::get_from_console(string const & salt)
         }
     }
 }
+// LCOV_EXCL_STOP
 
 
 /** \brief Retrieve the plain password.
@@ -762,6 +779,7 @@ void password::generate_salt()
     int const r(RAND_bytes(buf, sizeof(buf)));
     if(r != 1)
     {
+        // LCOV_EXCL_START
         // something happened, RAND_bytes() failed!
         //
         char err[256];
@@ -772,6 +790,7 @@ void password::generate_salt()
             + ": "
             + err
             + ")");
+        // LCOV_EXCL_STOP
     }
 
     f_salt = string(reinterpret_cast<char *>(buf), sizeof(buf));
@@ -813,45 +832,48 @@ void password::encrypt()
     }
 
     // Initialize so we gain access to all the necessary digests
+    //
     OpenSSL_add_all_digests();
 
     // retrieve the digest we want to use
-    // (TODO: allows website owners to change this value)
+    //
     EVP_MD const * md(EVP_get_digestbyname(f_digest.c_str()));
     if(md == nullptr)
     {
-        throw digest_not_available("the specified digest was not be found");
+        // the set_digest() prevents this from happening here
+        // although if the default ("sha512") becomes unavailable,
+        // then it could happen
+        //
+        throw logic_error("the specified digest was not found."); // LCOV_EXCL_LINE
     }
 
     // initialize the digest context
+    //
     std::unique_ptr<EVP_MD_CTX, decltype(&evp_md_ctx_deleter)> mdctx(evp_md_ctx_allocate(), evp_md_ctx_deleter);
     if(EVP_DigestInit_ex(mdctx.get(), md, nullptr) != 1)
     {
-        throw encryption_failed("EVP_DigestInit_ex() failed digest initialization");
+        throw encryption_failed("EVP_DigestInit_ex() failed digest initialization."); // LCOV_EXCL_LINE
     }
-
-    // RAII cleanup
-    //
 
     // add first salt
     //
     if(EVP_DigestUpdate(mdctx.get(), f_salt.data(), SALT_SIZE / 2) != 1)
     {
-        throw encryption_failed("EVP_DigestUpdate() failed digest update (salt1)");
+        throw encryption_failed("EVP_DigestUpdate() failed digest update (salt1)."); // LCOV_EXCL_LINE
     }
 
     // add password
     //
     if(EVP_DigestUpdate(mdctx.get(), f_plain.data(), f_plain.length()) != 1)
     {
-        throw encryption_failed("EVP_DigestUpdate() failed digest update (password)");
+        throw encryption_failed("EVP_DigestUpdate() failed digest update (password)."); // LCOV_EXCL_LINE
     }
 
     // add second salt
     //
     if(EVP_DigestUpdate(mdctx.get(), f_salt.data() + SALT_SIZE / 2, SALT_SIZE / 2) != 1)
     {
-        throw encryption_failed("EVP_DigestUpdate() failed digest update (salt2)");
+        throw encryption_failed("EVP_DigestUpdate() failed digest update (salt2)."); // LCOV_EXCL_LINE
     }
 
     // retrieve the result of the hash
@@ -860,7 +882,7 @@ void password::encrypt()
     unsigned int md_len(EVP_MAX_MD_SIZE);
     if(EVP_DigestFinal_ex(mdctx.get(), md_value, &md_len) != 1)
     {
-        throw encryption_failed("EVP_DigestFinal_ex() digest finalization failed");
+        throw encryption_failed("EVP_DigestFinal_ex() digest finalization failed."); // LCOV_EXCL_LINE
     }
     f_encrypted += string(reinterpret_cast<char *>(md_value), md_len);
 }

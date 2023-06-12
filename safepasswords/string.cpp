@@ -62,6 +62,21 @@ namespace detail
 {
 
 
+typedef void (*free_callback_t)(void * ptr);
+
+void free_callback(void * ptr)
+{
+    free(ptr);
+}
+
+free_callback_t g_free_callback = free_callback;
+
+void set_free_callback(free_callback_t callback)
+{
+    g_free_callback = callback;
+}
+
+
 
 class buffer
 {
@@ -69,6 +84,7 @@ public:
                             buffer();
                             ~buffer();
                             buffer(buffer const & rhs) = delete;
+                            buffer(buffer && rhs) = delete;
     buffer &                operator = (buffer const & rhs) = delete;
 
     void                    set_size(std::size_t size);
@@ -98,7 +114,7 @@ buffer::~buffer()
     {
         memset(f_data, 0, f_size);
         snapdev::NOT_USED(munlock(f_data, f_available));
-        free(f_data);
+        free_callback(f_data);
     }
 }
 
@@ -115,8 +131,8 @@ void buffer::set_size(std::size_t size)
             //
             memcpy(new_data, f_data, f_size);
             memset(f_data, 0, f_size);
-            munlock(f_data, f_available);
-            free(f_data);
+            snapdev::NOT_USED(munlock(f_data, f_available));
+            free_callback(f_data);
         }
         f_data = new_data;
         f_available = new_size;
@@ -155,6 +171,7 @@ std::size_t buffer::get_page_size()
         g_page_size = sysconf(_SC_PAGESIZE);
         if(g_page_size == -1)
         {
+            // LCOV_EXCL_START
             if(errno == 0)
             {
                 throw value_unavailable("_SC_PAGESIZE is not available.");
@@ -165,6 +182,7 @@ std::size_t buffer::get_page_size()
             }
 
             throw value_unavailable("sysconf(3) return an unknown error requesting _SC_PAGESIZE.");
+            // LCOV_EXCL_STOP
         }
     }
 
@@ -187,6 +205,7 @@ void * buffer::allocate_buffer(std::size_t size)
     r = posix_memalign(&data, get_page_size(), size);
     if(r != 0)
     {
+        // LCOV_EXCL_START
         if(errno == EINVAL)
         {
             throw invalid_parameter("allocation with invalid memory alignment.");
@@ -195,11 +214,13 @@ void * buffer::allocate_buffer(std::size_t size)
         // otherwise, we assume "out of memory"
         //
         throw std::bad_alloc();
+        // LCOV_EXCL_STOP
     }
 
     r = mlock(data, size);
     if(r != 0)
     {
+        // LCOV_EXCL_START
         free(data);
 
         switch(r)
@@ -217,7 +238,10 @@ void * buffer::allocate_buffer(std::size_t size)
             throw invalid_parameter("mlock() address or size were invalid.");
 
         }
+        // LCOV_EXCL_STOP
     }
+
+    memset(data, 0, size);
 
     return data;
 }
@@ -244,8 +268,32 @@ string::string(char const * s, std::size_t l)
 }
 
 
+string::string(string const & rhs)
+    : f_buffer(std::make_shared<detail::buffer>())
+{
+    std::size_t const l(rhs.length());
+    if(l > 0)
+    {
+        f_buffer->set_size(l);
+        memcpy(f_buffer->data(), rhs.f_buffer->data(), l);
+    }
+}
+
+
 string::~string()
 {
+}
+
+
+string & string::operator = (string const & rhs)
+{
+    std::size_t const l(rhs.length());
+    f_buffer->set_size(l);
+    if(l > 0)
+    {
+        memcpy(f_buffer->data(), rhs.f_buffer->data(), l);
+    }
+    return *this;
 }
 
 
@@ -336,7 +384,7 @@ string & string::operator += (char32_t wc)
     int const rl(libutf8::wctombs(buf, wc, sizeof(buf)));
     if(rl <= 0)
     {
-        throw invalid_parameter("wc passed to this function does not represent a valid Unicode character.");
+        throw invalid_parameter("wc passed to this function does not represent a valid Unicode character."); // LCOV_EXCL_LINE
     }
 
     std::size_t const ll(length());
@@ -392,6 +440,18 @@ std::strong_ordering string::operator <=> (string const & rhs) const
         return std::strong_ordering::equal;
     }
     return r > 0 ? std::strong_ordering::greater : std::strong_ordering::less;
+}
+
+
+bool string::operator == (string const & rhs) const
+{
+    return this->operator <=> (rhs) == std::strong_ordering::equal;
+}
+
+
+bool string::operator != (string const & rhs) const
+{
+    return this->operator <=> (rhs) != std::strong_ordering::equal;
 }
 
 

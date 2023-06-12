@@ -52,7 +52,7 @@ public:
 
     string const &          get_salt() const;
 
-    void                    set_encrypted(string const & encrypted, string const & salt = string());
+    void                    set_encrypted(string const & encrypted, string const & salt);
     string const &          get_encrypted() const;
 
     std::strong_ordering    operator <=> (password const & rhs) const;

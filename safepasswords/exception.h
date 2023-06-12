@@ -40,6 +40,7 @@ namespace safepasswords
 
 
 DECLARE_MAIN_EXCEPTION(safepasswords_exception);
+DECLARE_LOGIC_ERROR(logic_error);
 
 DECLARE_EXCEPTION(safepasswords_exception, digest_not_available);
 DECLARE_EXCEPTION(safepasswords_exception, encryption_failed);

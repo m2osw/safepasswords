@@ -23,6 +23,7 @@ project(safepasswords_project)
 
 find_package(AdvGetOpt        REQUIRED)
 find_package(LibExcept        REQUIRED)
+find_package(LibUtf8          REQUIRED)
 find_package(OpenSSL          REQUIRED)
 find_package(EventDispatcher  REQUIRED)
 find_package(SnapCMakeModules REQUIRED)

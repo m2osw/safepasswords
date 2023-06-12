@@ -38,12 +38,14 @@ add_library(${PROJECT_NAME} SHARED
 target_include_directories(${PROJECT_NAME}
     PUBLIC
         ${LIBEXCEPT_INCLUDE_DIRS}
+        ${LIBUTF8_INCLUDE_DIRS}
         ${OPENSSL_INCLUDE_DIR}
         ${SNAPLOGGER_INCLUDE_DIRS}
 )
 
 target_link_libraries(${PROJECT_NAME}
     ${LIBEXCEPT_LIBRARIES}
+    ${LIBUTF8_LIBRARIES}
     ${OPENSSL_LIBRARIES}
     ${SNAPLOGGER_LIBRARIES}
 )
