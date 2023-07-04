@@ -4,14 +4,15 @@ Maintainer: Alexis Wilke <alexis@m2osw.com>
 Build-Depends: cmake,
     debhelper,
     doxygen,
+    eventdispatcher-dev (>= 1.1.56.0~jammy),
     graphviz,
-    libexcept-dev (>= 1.1.12.0~bionic),
+    libexcept-dev (>= 1.1.12.0~jammy),
     libssl-dev (>= 1.0.1),
-    libutf8-dev (>= 1.0.6.0~bionic),
-    snapcatch2 (>= 2.9.1.0~bionic),
-    snapcmakemodules (>= 1.0.49.0~bionic),
-    snapdev (>= 1.1.3.0~bionic),
-    snaplogger-dev (>= 1.0.0.0~bionic)
+    libutf8-dev (>= 1.0.6.0~jammy),
+    snapcatch2 (>= 2.9.1.0~jammy),
+    snapcmakemodules (>= 1.0.49.0~jammy),
+    snapdev (>= 1.1.3.0~jammy),
+    snaplogger-dev (>= 1.0.0.0~jammy)
 Standards-Version: 3.9.4
 Section: utils
 Homepage: https://snapwebsites.org/

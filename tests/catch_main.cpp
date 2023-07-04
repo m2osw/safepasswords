@@ -24,9 +24,9 @@
 #include    "catch_main.h"
 
 
-// prinbee
+// safepasswords
 //
-#include    <prinbee/version.h>
+#include    <safepasswords/version.h>
 
 
 // libexcept
@@ -94,7 +94,7 @@ int main(int argc, char * argv[])
 {
     return SNAP_CATCH2_NAMESPACE::snap_catch2_main(
               "safepasswords"
-            , PRINBEE_VERSION_STRING
+            , SAFEPASSWORDS_VERSION_STRING
             , argc
             , argv
             , SNAP_CATCH2_NAMESPACE::init_callback
