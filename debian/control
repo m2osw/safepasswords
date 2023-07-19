@@ -1,7 +1,7 @@
 Source: safepasswords
 Priority: extra
 Maintainer: Alexis Wilke <alexis@m2osw.com>
-Build-Depends: advgetopt (>= 2.0.45.0~jammy),
+Build-Depends: advgetopt-dev (>= 2.0.45.0~jammy),
     cmake,
     debhelper,
     doxygen,
