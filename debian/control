@@ -1,12 +1,12 @@
 Source: safepasswords
 Priority: extra
 Maintainer: Alexis Wilke <alexis@m2osw.com>
-Build-Depends: advgetopt-dev (>= 2.0.45.0~jammy),
-    cmake,
+Build-Depends: cmake,
     debhelper,
     doxygen,
     eventdispatcher-dev (>= 1.1.56.0~jammy),
     graphviz,
+    libadvgetopt-dev (>= 2.0.45.0~jammy),
     libexcept-dev (>= 1.1.12.0~jammy),
     libssl-dev (>= 1.0.1),
     libutf8-dev (>= 1.0.6.0~jammy),
