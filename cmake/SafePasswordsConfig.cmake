@@ -58,6 +58,4 @@ find_package_handle_standard_args(
         SAFEPASSWORDS_LIBRARY
 )
 
-set(SAFEPASSWORDS_PLUGIN_INSTALL_DIR lib/safepasswords/plugins)
-
 # vim: ts=4 sw=4 et
