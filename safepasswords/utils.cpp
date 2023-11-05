@@ -21,6 +21,11 @@
 #include    "safepasswords/utils.h"
 
 
+// C++
+//
+#include    <algorithm>
+
+
 // last include
 //
 #include    <snapdev/poison.h>
