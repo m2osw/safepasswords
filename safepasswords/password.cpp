@@ -27,8 +27,14 @@
 
 // snapdev
 //
-//#include <snapdev/hexadecimal_string.h>
 #include    <snapdev/not_used.h>
+
+
+// C++
+//
+#include    <cstdint>
+#include    <iostream>
+#include    <memory>
 
 
 // OpenSSL
@@ -36,12 +42,6 @@
 #include    <openssl/err.h>
 #include    <openssl/evp.h>
 #include    <openssl/rand.h>
-
-
-// C++
-//
-#include    <memory>
-#include    <iostream>
 
 
 // C

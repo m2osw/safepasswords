@@ -1,3 +1,9 @@
+safepasswords (1.0.0.1~jammy) jammy; urgency=high
+
+  * Added an #include <cstdint> for mantic.
+
+ -- Alexis Wilke <alexis@m2osw.com>  Sat, 11 Nov 2023 13:43:36 -0800
+
 safepasswords (1.0.0.0~jammy) jammy; urgency=high
 
   * Password string and file handling.
