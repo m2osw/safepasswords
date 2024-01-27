@@ -22,6 +22,21 @@
  * Many of our systems generate keys and once in a while we would like
  * to have a password (like to connect to a remote communicator daemon
  * or the snaprfs between clusters).
+ *
+ * Usage:
+ *
+ * 1. to generate a password, just define the digest or keep the
+ *    default:
+ *
+ *        generate-password --digest sha512
+ *
+ * 2. to create a specific password from a specific plain string,
+ *    use the `--password` and optionally the `--salt` options:
+ *
+ *        generate-password --digest sha512 --password password1 --salt "exactly-32-characters"
+ *
+ *    if you have a binary salt, use the --hex-salt instead. It will convert
+ *    the hexadecimal digits to binary and use that buffer.
  */
 
 
@@ -39,7 +54,6 @@
 // snaplogger
 //
 #include    <snaplogger/logger.h>
-//#include    <snaplogger/message.h>
 #include    <snaplogger/options.h>
 
 
@@ -57,6 +71,7 @@
 
 // snapdev
 //
+#include    <snapdev/hexadecimal_string.h>
 #include    <snapdev/not_reached.h>
 #include    <snapdev/not_used.h>
 #include    <snapdev/stringize.h>
@@ -100,7 +115,14 @@ const advgetopt::option g_options[] =
               advgetopt::GETOPT_FLAG_REQUIRED
             , advgetopt::GETOPT_FLAG_GROUP_OPTIONS>())
         , advgetopt::DefaultValue("sha512")
-        , advgetopt::Help("specify the name of the digest to use to encrypt the password (i.e. \"sha512\")")
+        , advgetopt::Help("specify the name of the digest to use to encrypt the password (i.e. \"sha512\").")
+    ),
+    advgetopt::define_option(
+          advgetopt::Name("hex-salt")
+        , advgetopt::ShortName('S')
+        , advgetopt::Flags(advgetopt::all_flags<
+              advgetopt::GETOPT_FLAG_GROUP_COMMANDS>())
+        , advgetopt::Help("salt in hexadecimal (i.e. A378ABC...) to use to generate the encrypted password.")
     ),
     advgetopt::define_option(
           advgetopt::Name("length")
@@ -109,7 +131,14 @@ const advgetopt::option g_options[] =
               advgetopt::GETOPT_FLAG_REQUIRED
             , advgetopt::GETOPT_FLAG_GROUP_OPTIONS>())
         , advgetopt::Validator("integer(8...4000)")
-        , advgetopt::Help("specify a minimum password length (smallest minimum is 8)")
+        , advgetopt::Help("specify a minimum password length (smallest minimum is 8).")
+    ),
+    advgetopt::define_option(
+          advgetopt::Name("list-digests")
+        , advgetopt::ShortName('L')
+        , advgetopt::Flags(advgetopt::all_flags<
+              advgetopt::GETOPT_FLAG_GROUP_COMMANDS>())
+        , advgetopt::Help("list the name of all the available digests.")
     ),
     advgetopt::define_option(
           advgetopt::Name("max-length")
@@ -118,14 +147,21 @@ const advgetopt::option g_options[] =
               advgetopt::GETOPT_FLAG_REQUIRED
             , advgetopt::GETOPT_FLAG_GROUP_OPTIONS>())
         , advgetopt::Validator("integer(8...4000)")
-        , advgetopt::Help("specify a maximum password length (maximum must be larger or equal to minimum; default is 4,000)")
+        , advgetopt::Help("specify a maximum password length (maximum must be larger or equal to minimum; default is 4,000).")
     ),
     advgetopt::define_option(
-          advgetopt::Name("list-digests")
-        , advgetopt::ShortName('L')
+          advgetopt::Name("password")
+        , advgetopt::ShortName('p')
         , advgetopt::Flags(advgetopt::all_flags<
               advgetopt::GETOPT_FLAG_GROUP_COMMANDS>())
-        , advgetopt::Help("list the name of all the available digests")
+        , advgetopt::Help("plain password to use to generate the encrypted password.")
+    ),
+    advgetopt::define_option(
+          advgetopt::Name("salt")
+        , advgetopt::ShortName('s')
+        , advgetopt::Flags(advgetopt::all_flags<
+              advgetopt::GETOPT_FLAG_GROUP_COMMANDS>())
+        , advgetopt::Help("salt to use to generate the encrypted password.")
     ),
     advgetopt::end_options()
 };
@@ -268,6 +304,7 @@ public:
 
 private:
     int                     list_digest();
+    int                     encrypt();
     int                     generate();
 
     advgetopt::getopt       f_opts;
@@ -282,7 +319,8 @@ generate_password::generate_password(int argc, char * argv[])
     if(!snaplogger::process_logger_options(f_opts, "/etc/safepasswords/logger", std::cout, false))
     {
         // exit on any error
-        throw advgetopt::getopt_exit("logger options genrated an error.", 1);
+        //
+        throw advgetopt::getopt_exit("logger options generated an error.", 1);
     }
 }
 
@@ -293,10 +331,12 @@ int generate_password::run()
     {
         return list_digest();
     }
+    if(f_opts.is_defined("password"))
+    {
+        return encrypt();
+    }
 
-    generate();
-
-    return 0;
+    return generate();
 }
 
 
@@ -354,6 +394,50 @@ int generate_password::list_digest()
 }
 
 
+int generate_password::encrypt()
+{
+    safepasswords::password p;
+
+    p.set_digest(f_opts.get_string("digest"));
+
+    int length(safepasswords::PASSWORD_DEFAULT_MIN_LENGTH);
+    if(f_opts.is_defined("length"))
+    {
+        length = f_opts.get_long("length");
+    }
+
+    int max_length(safepasswords::PASSWORD_DEFAULT_MAX_LENGTH);
+    if(f_opts.is_defined("max-length"))
+    {
+        max_length = f_opts.get_long("max-length");
+    }
+
+    std::string const & plain(f_opts.get_string("password"));
+    safepasswords::string const pwd(plain.c_str(), plain.length());
+
+    safepasswords::string salt;
+    if(f_opts.is_defined("salt"))
+    {
+        std::string const & plain_salt(f_opts.get_string("salt"));
+        salt = safepasswords::string(plain_salt.c_str(), plain_salt.length());
+    }
+    else if(f_opts.is_defined("hex-salt"))
+    {
+        std::string const & binary_salt(snapdev::hex_to_bin(f_opts.get_string("hex-salt")));
+        salt = safepasswords::string(binary_salt.c_str(), binary_salt.length());
+    }
+
+    p.set_plain(pwd, salt);
+
+    safepasswords::string const result(p.get_encrypted());
+    std::string const encrypted(snapdev::bin_to_hex(std::string(result.data(), result.length())));
+
+    std::cout << encrypted << "\n";
+
+    return 0;
+}
+
+
 int generate_password::generate()
 {
     safepasswords::password p;
@@ -374,7 +458,7 @@ int generate_password::generate()
 
     p.generate(length, max_length);
 
-    safepasswords::string plain(p.get_plain());
+    safepasswords::string const plain(p.get_plain());
 
     std::cout << plain.to_std_string() << "\n";
 

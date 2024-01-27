@@ -481,7 +481,7 @@ void password::set_plain(string const & plain, string const & salt)
  * The function is responsible for cancel ECHO-ing in the console before
  * getting characters.
  *
- * This function accepts a \p salt parameter like the set_plain_password(),
+ * This function accepts a \p salt parameter like the set_plain(),
  * it may be used to check the password of an existing user and not just to
  * create a new user entry so the salt is required.
  *
@@ -647,7 +647,7 @@ bool password::get_from_console(string const & salt)
  * Note that the plain password is not available if the password object
  * was just set to an encrypted password (i.e. the "encryption" is a one
  * way hashing so we cannot get the password back out.) So you can get
- * the pain password only if the \p set_plain_password() was called earlier.
+ * the pain password only if the \p set_plain() was called earlier.
  *
  * \return The plain password.
  */
@@ -666,7 +666,7 @@ string const & password::get_plain() const
  *
  * \note
  * There is no set_salt() function. Instead, we expect you will call
- * the set_plain_password() including the salt parameter.
+ * the set_plain() including the salt parameter.
  *
  * \warning
  * The salt is not a printable string. It is a buffer of binary codes,
