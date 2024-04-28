@@ -277,7 +277,7 @@ void collect_digests(EVP_MD * digest, void * data)
 
 int name_cmp(char const * const * a, char const * const * b)
 {
-    return OPENSSL_strcasecmp(*a, *b);
+    return strcasecmp(*a, *b);
 }
 
 
