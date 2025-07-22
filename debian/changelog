@@ -1,4 +1,4 @@
-safepasswords (1.0.1.0~bionic) bionic; urgency=high
+safepasswords (1.0.1.0~noble) noble; urgency=high
 
   * Allow for a --salt command line option.
   * Allow for a --password command line option (to force the password).
