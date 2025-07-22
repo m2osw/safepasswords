@@ -2,6 +2,8 @@ safepasswords (1.0.1.0~bionic) bionic; urgency=high
 
   * Allow for a --salt command line option.
   * Allow for a --password command line option (to force the password).
+  * Call strcasecmp() directly because our build system fails otherwise.
+  * Moved debian/compat version to debian/control dependencies.
   * Fixed some documentation.
 
  -- Alexis Wilke <alexis@m2osw.com>  Fri, 26 Jan 2024 21:34:55 -0800
