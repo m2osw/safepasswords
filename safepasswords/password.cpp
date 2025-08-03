@@ -219,7 +219,7 @@ void close_file(int * fd)
  * \warning
  * In the current implementation, the salt string must be exactly SALT_SIZE
  * in length. Although we use an std::string, the bytes can be any value
- * from '\0' to '\xFF'.
+ * from `\0` to `\xFF`.
  */
 password::password()
 {
@@ -449,7 +449,7 @@ void password::generate(int min_length, int max_length)
  * It is the caller's responsibility to verify the string if it
  * can be tainted in any special way.
  *
- * \param[in] plain_password  The plain password to encrypt.
+ * \param[in] plain  The plain password to encrypt.
  * \param[in] salt  The salt to use with the password encryption system.
  */
 void password::set_plain(string const & plain, string const & salt)
